@@ -24,12 +24,6 @@ addpath(mes_path) % MES toolbox
 % confLevel: confidence level of the estimated condfidence interval (usually something like .90 or .95); 
 % out_name: string with a prefix to add to the name of the results nifti files
 
-%% This block is to activate the parallel pooling
-% Check if parpool is on
-myCluster = parcluster('local');
-% if the num of ptcps are more than available cores, adjust
-pool = parpool('local', myCluster.NumWorkers);
-
 %% In a loop, run the function
 % but first set the directories
 main_dir = '/zi/flstorage/group_klips/data/data/Cagatay/TEDDS_OCRT2/OCRT2';
@@ -54,8 +48,5 @@ for q = 1:numel(main_folds)
         end
     end
 end
-
-% %% End parallel pool
-% delete(gcp)
 
 
