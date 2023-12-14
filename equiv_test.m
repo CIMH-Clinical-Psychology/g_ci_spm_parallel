@@ -26,27 +26,42 @@ addpath(mes_path) % MES toolbox
 
 %% In a loop, run the function
 % but first set the directories
-main_dir = '/zi/flstorage/group_klips/data/data/Cagatay/TEDDS_OCRT2/OCRT2';
-% main_folds = dir([main_dir filesep 'mult_second*']); 
-main_folds = dir([main_dir filesep 'mult_sep_secondlevels']);
+sec_lvl_fld = uigetdir(title='Select the directory where the second level results are located');
+while sec_lvl_fld == 0
+    sec_lvl_fld = uigetdir(title='Select the highest directory where the second level results are located');
+end
+main_folds = dir(sec_lvl_fld);
 main_folds = strcat({main_folds.folder},filesep,{main_folds.name})';
 % loop over them
 for q = 1:numel(main_folds)
-    if ~contains(main_folds{q}, '/.')s
+    if ~contains(main_folds{q}, '/.')
         cont_folds = dir([main_folds{q} filesep 'Contrast*']);
-        cont_folds = strcat({cont_folds.folder},filesep,{cont_folds.name})';
+        if ~isempty(cont_folds)
+            cont_folds = strcat({cont_folds.folder},filesep,{cont_folds.name})';
+        else
+            cont_folds = dir(main_folds{q});
+            cont_folds = strcat({cont_folds.folder},filesep,{cont_folds.name})';
+        end
+        % select variables
+        inp = inputdlg({'Please enter the file name of the t-maps. For example: "spmT_0001.nii"', ...
+            'Please enter the file name of the SPM.mat file. For example: "SPM.mat"', ...
+            'Please enter the file name of the mask image. For example: "mask.nii"'})
+        t_map_name = inp{1};
+        spm_name = inp{2};
+        mask_name = inp{3};
         for qq = 1:numel(cont_folds)
-            t_map = [cont_folds{qq} filesep 'spmT_0001.nii'];
-            con = [1];
-            SPM = load([cont_folds{qq} filesep 'SPM.mat']);
-            X = SPM.SPM.xX.xKXs.X;
-            mask_img = [cont_folds{qq} filesep 'mask.nii'];
-            confLevel = .95;
-            out_name = [cont_folds{qq} filesep];
-            % es_ci_spm(t_map, con, X, mask_img, confLevel, out_name)
-            es_ci_spm_edited(t_map, con, X, mask_img, confLevel, out_name, pool)
+            if ~contains(cont_folds{qq}, '/.')
+                t_map = [cont_folds{qq} filesep t_map_name];
+                con = [1];
+                SPM = load([cont_folds{qq} filesep spm_name]);
+                X = SPM.SPM.xX.xKXs.X;
+                mask_img = [cont_folds{qq} filesep mask_name];
+                confLevel = .95;
+                out_name = [cont_folds{qq} filesep];
+                % es_ci_spm(t_map, con, X, mask_img, confLevel, out_name)
+                es_ci_spm_edited(t_map, con, X, mask_img, confLevel, out_name, pool)
+            end
         end
     end
 end
-
 
