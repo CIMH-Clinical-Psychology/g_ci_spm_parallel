@@ -1,4 +1,4 @@
-function [] = es_ci_spm_parallel(t_map,con,X,mask_img,confLevel,out_name)
+function pool = es_ci_spm_parallel(t_map,con,X,mask_img,confLevel,out_name, pool)
 %es_ci_spm.m Estimates effect size g and its CI from SPM t maps
 %
 %   Use by es_ci_spm(t_map,con,X,mask_img,confLevel,out_name) with
@@ -39,7 +39,6 @@ function [] = es_ci_spm_parallel(t_map,con,X,mask_img,confLevel,out_name)
 % Medical Faculty Mannheim/Heidelberg University 
 % Central Institute of Mental Health
 % Mannheim, Germany
-
 %% preparations
 
 % make contrast a column vector, if not already
@@ -84,45 +83,150 @@ ts(:,1) = t(logical(Y_m));
 
 % estimate exact CI
 ci = zeros(2,numel(ts));
-
-%% This block is to activate the parallel pooling
-% Check if parpool is on
-myCluster = parcluster('local');
-% if the num of ptcps are more than available cores, adjust
-if numel(ts) > myCluster.NumWorkers
-    pool = parpool('local', myCluster.NumWorkers);
-else
-    pool = parpool('local', numel(ts));
+%% parallel loop checks
+%% Arg check
+switch nargin
+    case 6
+        %% Check if parpool is on
+        myCluster = parcluster('local');
+        % if the num of ptcps are more than available cores, adjust
+        if numel(ts) > myCluster.NumWorkers
+            pool = parpool(myCluster.NumWorkers);
+        else
+            pool = parpool(length(ptcp_array));
+        end
 end
+% %% This block is to activate the parallel pooling
+% % Check if parpool is on
+% myCluster = parcluster('local');
+% % if the num of ptcps are more than available cores, adjust
+% if numel(ts) > myCluster.NumWorkers
+%     pool = parpool('local', myCluster.NumWorkers-2);
+% else
+%     pool = parpool('local', numel(ts));
+% end
 %%
 % loop over t values and estimate CI for g
 % for i=1:numel(ts)
 % do it with parallel pooling, it does require a special logic of dividing
 % the numel into unique parts
-inds = 1:numel(ts)/25:numel(ts);
+total_iterations = 25;
+inds = floor(1:numel(ts)/total_iterations:numel(ts)); % floor here so always integer indices
+%% parallel loop
 try
-    parfor ind = 1:25
-        license('test', 'Statistics_Toolbox', 'enable')
+%     parfor ind = 1:25
+%         license('test', 'Statistics_Toolbox', 'enable')
+%         if ind == 1
+%             rng = inds(ind):inds(ind+1);
+%         elseif ind == 25
+%             rng = inds(ind)+1:numel(ts);
+%         else
+%             rng = inds(ind)+1:inds(ind+1);
+%         end
+%         aux_ci = zeros(2,numel(rng)); % create the auxillary matrix
+%         for i = rng
+%             t_tmp = ts(i);
+%             ci_tmp = ncpci(t_tmp,'t',DoF,'confLevel',confLevel)'*td_fac; % uses the 'ncpci.m' function from the MES toolbox
+%             aux_ci(:,i) = ci_tmp;
+%         end
+% %         ci(:,rng(1):rng(end)) = aux_ci; %
+%         % Send update - adjust frequency if needed (e.g., every 1% or 5%)  
+%         if mod(i, max(5, floor(ind/100))) == 0  % Update every 5%  
+%             send(D, 1);  
+%             p = i;  
+%         end
+%         send(progress, i);
+%     end
+%     parfor ind = 1:total_iterations
+%         license('test', 'Statistics_Toolbox', 'enable');
+%         
+%         % Define the range for this iteration
+%         if ind == 1
+%             rng = inds(ind):inds(ind+1);
+%         elseif ind == total_iterations
+%             rng = inds(ind)+1:numel(ts);
+%         else
+%             rng = inds(ind)+1:inds(ind+1);
+%         end
+%         
+%         % Create the auxiliary matrix
+%         aux_ci = zeros(2, numel(rng));
+%         
+%         % Process each element in the range
+%         for idx = 1:numel(rng)  % Use local indexing
+%             i = rng(idx);  % Get the actual index from rng
+%             t_tmp = ts(i);
+%             %             ci_tmp = ncpci(t_tmp,'t',DoF,'confLevel',confLevel)'*td_fac;
+%             %             aux_ci(:,idx) = ci_tmp;  % Use idx instead of i
+%             % Check if t_tmp is zero or very close to zero
+%             if t_tmp == 0 || abs(t_tmp) < eps
+%                 aux_ci(:,idx) = [0; 0];  % if t=0
+%             else
+%                 ci_tmp = ncpci(t_tmp,'t',DoF,'confLevel',confLevel)'*td_fac;
+%                 aux_ci(:,idx) = ci_tmp;
+%             end
+%         end
+%     end
+% Preallocate a cell array to store results from each iteration
+    ci_parts = cell(total_iterations, 1);
+
+    parfor ind = 1:total_iterations
+        license('test', 'Statistics_Toolbox', 'enable');
+
+        % Define the range for this iteration
         if ind == 1
             rng = inds(ind):inds(ind+1);
-        elseif ind == 25
+        elseif ind == total_iterations
             rng = inds(ind)+1:numel(ts);
         else
             rng = inds(ind)+1:inds(ind+1);
         end
-        rng
-        aux_ci = zeros(2,numel(rng)); % create the auxillary matrix
-        for i = rng
+
+        % Create the auxiliary matrix
+        aux_ci = zeros(2, numel(rng));
+
+        % Process each element in the range
+        for idx = 1:numel(rng)  % Use local indexing
+            i = rng(idx);  % Get the actual index from rng
             t_tmp = ts(i);
-            ci_tmp = ncpci(t_tmp,'t',DoF,'confLevel',confLevel)'*td_fac; % uses the 'ncpci.m' function from the MES toolbox
-            aux_ci(:,i) = ci_tmp
+
+            % Check if t_tmp is zero or very close to zero
+            if t_tmp == 0 || abs(t_tmp) < eps
+                aux_ci(:, idx) = [0; 0];  % if t=0
+            else
+                ci_tmp = ncpci(t_tmp, 't', DoF, 'confLevel', confLevel)' * td_fac;
+                aux_ci(:, idx) = ci_tmp;
+            end
         end
-%         ci(:,rng(1):rng(end)) = aux_ci; %
+
+        % Store the results for this iteration in the cell array
+        ci_parts{ind} = {rng, aux_ci};
+    end
+
+    % Combine the results from all iterations
+    for ind = 1:total_iterations
+        rng = ci_parts{ind}{1};
+        aux_ci = ci_parts{ind}{2};
+        ci(:, rng) = aux_ci;
     end
 catch err_fold
-    disp(err_fold)
-    %% End pool
-    delete(gcp)
+    % Display detailed error information  
+    disp('Error occurred:');  
+    disp(err_fold.message);  
+      
+    % Display stack trace with line numbers  
+    for i = 1:length(err_fold.stack)  
+        disp(['File: ' err_fold.stack(i).file]);  
+        disp(['Function: ' err_fold.stack(i).name]);  
+        disp(['Line: ' num2str(err_fold.stack(i).line)]);  
+        disp('---');  
+    end  
+      
+    % use rethrow to see the error in standard format  
+    % rethrow(err_fold);  
+      
+%     % End pool  
+%     delete(gcp)
 end
 
 % put lower and upper CI limit into 3D maps
@@ -133,6 +237,7 @@ ci_u = nan(size(Y_m));
 ci_u(logical(Y_m)) = ci(2,:);    
 
 %% save images
+fprintf('\n====================================\nCalculation completed, saving images:\n--> %s\n====================================\n', [out_name '_g.nii']);
 V_out=V;
 
 % g map
@@ -147,7 +252,7 @@ spm_write_vol(V_out,ci_l);
 V_out.fname=[out_name '_g_ci_u.nii'];
 spm_write_vol(V_out,ci_u);
 
-%% End parallel pool
-delete(gcp)
+% %% End parallel pool
+% delete(gcp)
 end
 
