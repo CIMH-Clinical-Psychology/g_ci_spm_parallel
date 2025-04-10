@@ -2,19 +2,19 @@
 Please check the [original repo](https://github.com/Fungisai/g_ci_spm) from [@Fungisai](https://github.com/Fungisai) for the serialised original version of the function.
 
 This fork is made for parallelisation of CI estimation for the g values.
-You can either run the function on it's own by calling `es_ci_spm_parallel(t_map,con,X,mask_img,confLevel,out_name)` or running `equiv_test.m` script by making the required changes.
-The usage of `equiv_test.m` is not bug-free as of 14.12.2023; but soon it will be :)
+You can either run the function on it's own by calling `es_ci_spm_parallel(t_map,con,X,mask_img,confLevel,out_name)` or running `equiv_test.m` script. The `equiv_test.m` script should prompt you regarding the required files.
+The usage of `equiv_test.m` is almost bug-free as of 10.04.2025; but not fully stress tested yet! :)
 
 ### Update on 10.04.2025: 
 
 *Currently `equiv_test.m` works in following ways:*
 
 - **No external masking**: Select no external masking when prompted, then the calculation will resume as usually
-- **Multiple external masking**: Select multiple external masks when prompted, the 2nd level spmT files will be masked and consequently individual Hedge's g will be calculated''
+- **Multiple external masking**: Select multiple external masks when prompted, the 2nd level spmT files will be masked and consequently individual Hedges' g will be calculated''
 
 ### *Future work*:
 
-- **Single external masking**: Select a single external mask when prompted, the 2nd level spmT files will be masked and consequently the Hedge's g will be calculated''
+- **Single external masking**: Select a single external mask when prompted, the 2nd level spmT files will be masked and consequently the Hedges' g will be calculated''
 
 ## Matlab function for the estimation of effect size g and its confidence interval from SPM t maps
 
