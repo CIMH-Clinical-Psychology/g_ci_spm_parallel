@@ -3,13 +3,13 @@
 
 %% First load the necessary tools
 % might change the locations in the future
-gCI_path = uigetdir(title='Select the directory where the estimation of effect size g and its confidence interval toolbox is located');
+gCI_path = uigetdir('Select the directory where the estimation of effect size g and its confidence interval toolbox is located');
 while gCI_path == 0
-    gCI_path = uigetdir(title='Select the directory where the estimation of effect size g and its confidence interval toolbox is located');
+    gCI_path = uigetdir('Select the directory where the estimation of effect size g and its confidence interval toolbox is located');
 end
-mes_path = uigetdir(title='Select the directory where the measures of effect size toolbox is located');
+mes_path = uigetdir('Select the directory where the measures of effect size toolbox is located');
 while mes_path == 0
-    mes_path = uigetdir(title='Select the directory where the measures of effect size toolbox is located');
+    mes_path = uigetdir('Select the directory where the measures of effect size toolbox is located');
 end
 
 addpath(gCI_path) % g-CI toolbox
@@ -26,42 +26,90 @@ addpath(mes_path) % MES toolbox
 
 %% In a loop, run the function
 % but first set the directories
-sec_lvl_fld = uigetdir(title='Select the directory where the second level results are located');
+sec_lvl_fld = uigetdir('Select the directory where the second level results are located');
 while sec_lvl_fld == 0
-    sec_lvl_fld = uigetdir(title='Select the highest directory where the second level results are located');
+    sec_lvl_fld = uigetdir('Select the highest directory where the second level results are located');
 end
 main_folds = dir(sec_lvl_fld);
 main_folds = strcat({main_folds.folder},filesep,{main_folds.name})';
-% loop over them
-for q = 1:numel(main_folds)
-    if ~contains(main_folds{q}, '/.')
-        cont_folds = dir([main_folds{q} filesep 'Contrast*']);
-        if ~isempty(cont_folds)
-            cont_folds = strcat({cont_folds.folder},filesep,{cont_folds.name})';
-        else
-            cont_folds = dir(main_folds{q});
-            cont_folds = strcat({cont_folds.folder},filesep,{cont_folds.name})';
-        end
-        % select variables
-        inp = inputdlg({'Please enter the file name of the t-maps. For example: "spmT_0001.nii"', ...
+is_valid_folder = ~endsWith(main_folds, '/.') & ~endsWith(main_folds, '/..');  
+main_folds = main_folds(is_valid_folder);
+% choose filenames
+inp = inputdlg({'Please enter the file name of the t-maps. For example: "spmT_0001.nii"', ...
             'Please enter the file name of the SPM.mat file. For example: "SPM.mat"', ...
             'Please enter the file name of the mask image. For example: "mask.nii"'})
-        t_map_name = inp{1};
-        spm_name = inp{2};
-        mask_name = inp{3};
-        for qq = 1:numel(cont_folds)
-            if ~contains(cont_folds{qq}, '/.')
-                t_map = [cont_folds{qq} filesep t_map_name];
-                con = [1];
-                SPM = load([cont_folds{qq} filesep spm_name]);
-                X = SPM.SPM.xX.xKXs.X;
-                mask_img = [cont_folds{qq} filesep mask_name];
-                confLevel = .95;
-                out_name = [cont_folds{qq} filesep];
-                % es_ci_spm(t_map, con, X, mask_img, confLevel, out_name)
-                es_ci_spm_edited(t_map, con, X, mask_img, confLevel, out_name, pool)
+t_map_name = inp{1};
+spm_name = inp{2};
+% mask_name = ['/zi/flstorage/group_klips/data/data/Cagatay/olf_mask/selected' filesep aux_mask_name '.nii'];
+% Mask names
+mask_names = {'resampled_olf_mask', 'resampled_rew_mask'};
+% loop for the masks
+for qq = 1:numel(mask_names)
+    aux_mask_name = mask_names{qq};
+    % Load the external mask  
+    ext_mask_img = ['/zi/flstorage/group_klips/data/data/Cagatay/olf_mask/selected' filesep aux_mask_name '.nii'];
+    % Reslice the mask to match the t-map
+    flags = struct('interp', 0, 'wrap', [0 0 0], 'mask', 0, 'which', 1, 'mean', 0); % Reslicing options
+    spm_reslice({[main_folds{q} filesep t_map_name], ext_mask_img}, flags);
+    movefile(strrep(ext_mask_img, 'resampled_', 'rresampled_'), ext_mask_img);
+    if exist('ext_mask_img', 'var')
+        ext_mask_vol = spm_vol(ext_mask_img);
+        ext_mask_data = spm_read_vols(ext_mask_vol);
+        % Ensure the mask is binary (threshold if necessary)
+        ext_mask_data = ext_mask_data > 0; % Convert to binary (1 for mask, 0 for outside)
+    end
+    %% loop over them
+    for q = 1:numel(main_folds)
+        if ~contains(main_folds{q}, '/.')
+            fprintf('\n====================================\nProcessing contrast: %s\n====================================\n', main_folds{q});
+            % cont_folds = dir([main_folds{q} filesep 'Contrast*']);
+            % if ~isempty(cont_folds)
+            %     cont_folds = strcat({cont_folds.folder},filesep,{cont_folds.name})';
+            % else
+            %     cont_folds = dir(main_folds{q});
+            %     % cont_folds = strcat({cont_folds.folder},filesep,{cont_folds.name})';
+            %     cont_folds = {cont_folds.folder};
+            %     cont_folds = cont_folds{1};
+            % end
+            % select variables
+            % inp = inputdlg({'Please enter the file name of the t-maps. For example: "spmT_0001.nii"', ...
+            %     'Please enter the file name of the SPM.mat file. For example: "SPM.mat"', ...
+            %     'Please enter the file name of the mask image. For example: "mask.nii"'})
+            % t_map_name = inp{1};
+            % spm_name = inp{2};
+            % mask_name = inp{3};
+            % for qq = 1:numel(cont_folds)
+            %     if ~contains(cont_folds{qq}, '/.')
+            % check if an external mask is introduced
+            if exist('ext_mask_data', 'var')
+                t_map = [main_folds{q} filesep t_map_name];
+                tmap_vol = spm_vol(t_map);  
+                tmap_data = spm_read_vols(tmap_vol);
+                % Apply the mask to the t-map  
+                masked_tmap_data = tmap_data .* ext_mask_data;  
+                % Save the masked t-map  
+                masked_tmap_file = [main_folds{q} filesep 'masked_' t_map_name]; % Output file name  
+                masked_tmap_vol = tmap_vol; % Copy header information from the original t-map  
+                masked_tmap_vol.fname = masked_tmap_file; % Set the new file name  
+                spm_write_vol(masked_tmap_vol, masked_tmap_data);
+                t_map = masked_tmap_file;
+            else
+                t_map = [main_folds{q} filesep t_map_name];
             end
+            con = [1];
+            SPM = load([main_folds{q} filesep spm_name]);
+            X = SPM.SPM.xX.xKXs.X;
+            % mask_img = [main_folds{q} filesep mask_name]; % old logic
+            confLevel = .95;
+            out_name = [main_folds{q} filesep strrep(aux_mask_name, 'resampled_', '')];
+%             mask_name = [main_folds{q} filesep inp{3}]; % default SPM mask path
+            if ~exist('pool', 'var')
+                pool = es_ci_spm_parallel(t_map, con, X, ext_mask_img, confLevel, out_name);
+            else
+                pool = es_ci_spm_parallel(t_map, con, X, ext_mask_img, confLevel, out_name, pool);
+            end
+                % end
+            % end
         end
     end
 end
-
