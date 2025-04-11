@@ -1,5 +1,5 @@
 # Directories
-brain_toaster/tests/test_files/*
+examples/test_files/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
