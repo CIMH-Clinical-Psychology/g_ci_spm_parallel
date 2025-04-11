@@ -56,7 +56,7 @@ import numpy as np
 
 def main():
     # Example usage of the package
-    t_map = str(Path('./test_files/masked_spmT_0001.nii'))
+    t_map = str(Path('./test_files/spmT_0001.nii'))
     mask_img = str(Path('./test_files/mask.nii'))
     con = np.array([1])
     X = load_design_matrix(str(Path('./test_files/SPM.mat')))
