@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brain_toaster"
+description = "Effect size and confidence interval calculation for SPM t-maps"
+authors = [{name = "Çağatay Gürsoy", email = "cagatay.guersoy@zi-mannheim.de"}]
+version = "0.1.0"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.20",
+    "nibabel>=3.0",
+    "scipy>=1.7",
+    "joblib>=1.0"
+]

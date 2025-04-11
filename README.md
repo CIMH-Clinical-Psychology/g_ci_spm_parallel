@@ -1,22 +1,42 @@
 # g_ci_spm_parallel
-Please check the [original repo](https://github.com/Fungisai/g_ci_spm) from [@Fungisai](https://github.com/Fungisai) for the serialised original version of the function.
 
-This fork is made for parallelisation of CI estimation for the g values.
-You can either run the function on it's own by calling `es_ci_spm_parallel(t_map,con,X,mask_img,confLevel,out_name)` or running `equiv_test.m` script. The `equiv_test.m` script should prompt you regarding the required files.
-The usage of `equiv_test.m` is almost bug-free as of 10.04.2025; but not fully stress tested yet! :)
+Please check the [original repo](https://github.com/Fungisai/g_ci_spm) from [@Fungisai](https://github.com/Fungisai) for the original serialised MATLAB version of the library.
 
-### Update on 10.04.2025: 
+This fork is made as a port of CI estimation for the g values in Python.
 
-*Currently `equiv_test.m` works in following ways:*
+## Features  
+  
+- Extract design matrices from SPM `.mat` files.  
+- Compute effect sizes (e.g., Hedges' g) from SPM t-maps.  
+- Generate confidence intervals for effect sizes.  
+- Parallelized computation for large datasets.  
+- Integration with neuroimaging tools like `nilearn` for visualization.  
+  
+---
 
-- **No external masking**: Select no external masking when prompted, then the calculation will resume as usually
-- **Multiple external masking**: Select multiple external masks when prompted, the 2nd level spmT files will be masked and consequently individual Hedges' g will be calculated''
+## Installation  
+  
+### Prerequisites  
 
-### *Future work*:
+- Python 3.8 or higher  
+- Required libraries: `numpy`, `scipy`, `nibabel`, `joblib`, `nilearn`
 
-- **Single external masking**: Select a single external mask when prompted, the 2nd level spmT files will be masked and consequently the Hedges' g will be calculated''
 
-## Matlab function for the estimation of effect size g and its confidence interval from SPM t maps
+### Clone the repository  
+
+git clone https://github.com/yourusername/brain_toaster.git  
+  
+### Navigate to the project directory  
+
+cd brain_toaster  
+  
+### Install in development mode 
+
+pip install -e .
+
+---
+
+## Usage example
 
 Use by `es_ci_spm_parallel(t_map,con,X,mask_img,confLevel,out_name)` with
 ```
@@ -27,12 +47,45 @@ mask_img:   string with the name of the SPM mask file for the analysis (usually 
 confLevel:  confidence level of the estimated condfidence interval (usually something like .90 or .95);
 out_name:   string with a prefix to add to the name of the results nifti files 
 ```
-The results are saved as three nifti files `'out_name_g.nii'` containing the g values map, and `'out_name_g_ci_l.nii'` and `'out_name_g_ci_u.nii'` containing the lower and upper CI limit maps respectively.
+
+```python
+from brain_toaster import es_ci_spm_parallel
+from brain_toaster.utils import load_design_matrix, prepare_contrast
+from pathlib import Path
+import numpy as np
+
+def main():
+    # Example usage of the package
+    t_map = str(Path('./test_files/masked_spmT_0001.nii'))
+    mask_img = str(Path('./test_files/mask.nii'))
+    con = np.array([1])
+    X = load_design_matrix(str(Path('./test_files/SPM.mat')))
+    confLevel = 0.95
+    out_name = 'results/exp1'
+
+    es_ci_spm_parallel(t_map, con, X, mask_img, confLevel, out_name)
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+## Visualisation example
+
+```python
+plotting.view_img(
+    stat_map_img='results/exp1_g.nii', # Input the resulting g calculation
+    bg_img=anat_filename,  # Set background image / likely an anatomical file
+    cmap='jet',  # Set colormap
+    black_bg=False  # Use a black background
+)
+```
+
+---
+
+## Some notes inherited from the original repository
 
 Please note that the calculations are computationally expensive and can take up to several hours. (Even though it is parallelised now)
-
-This function is dependent on SPM 12 (https://www.fil.ion.ucl.ac.uk/spm/software/spm12/) and the Measures of Effect Size (MES) toolbox (https://github.com/hhentschke/measures-of-effect-size-toolbox).
-
-`Examples.zip` contains the code for the simulations in Figure 1 and the second level maps and necessary information to run `g_ci_spm` for the data presented in Figures 2-5 of the manuscript.
 
 If this function is of help for your own work, please cite _Gerchen, M.F., Kirsch, P., & Feld, G.B. (2021) Brain-Wide Inferiority and Equivalence Tests in fMRI Group Analyses: Selected Applications. Human Brain Mapping. DOI: 10.1002/hbm.25664_
